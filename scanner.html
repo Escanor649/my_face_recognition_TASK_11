@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corporate Biometric Entry</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f0f2f5; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .scanner-card {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 450px;
+            border-top: 8px solid #1a3a5f; 
+        }
+        h2 { color: #1a3a5f; margin-bottom: 10px; }
+        p { color: #64748b; font-size: 14px; margin-bottom: 25px; }
+        
+        #video {
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+            transform: scaleX(-1); 
+        }
+        .status-box {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .verified { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    </style>
+</head>
+<body>
+
+    <div class="scanner-card">
+        <h2>Biometric Verification</h2>
+        <p>Please position your face within the camera frame for authorization.</p>
+        
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas" style="display:none;" width="640" height="480"></canvas>
+        
+        <div id="status" class="status-box">Initializing System...</div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const status = document.getElementById('status');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { 
+                video.srcObject = stream;
+                status.innerText = "Scanning...";
+                setInterval(sendFrame, 1000); 
+            });
+
+      function sendFrame() {
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, 640, 480);
+            const imageData = canvas.toDataURL('image/jpeg', 0.5);
+
+            fetch('/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageData })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    status.innerText = "Human verification successful, welcome!";
+                    status.className = "status-box verified";
+
+                    const tracks = video.srcObject.getTracks();
+                    tracks.forEach(track => track.stop());
+
+                    setTimeout(() => {
+                        window.location.href = "https://futo.edu.ng";
+                    }, 2000);
+                } else {
+                    status.innerText = "Awaiting Recognition...";
+                    status.className = "status-box";
+                }
+            });
+        }
+    </script>
+</body>
+</html>
